@@ -6,13 +6,34 @@
 //
 
 import UIKit
+import Kommunicate
+import UserNotifications
 
 @main
-class AppDelegate: UIResponder, UIApplicationDelegate {
-
-
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    
+    var window: UIWindow?
+    
+    //add app ID here
+    var appId = ""
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        
+        KMPushNotificationHandler.shared.dataConnectionNotificationHandlerWith(Kommunicate.defaultConfiguration, Kommunicate.kmConversationViewConfiguration)
+        let kmApplocalNotificationHandler : KMAppLocalNotification =  KMAppLocalNotification.appLocalNotificationHandler()
+        kmApplocalNotificationHandler.dataConnectionNotificationHandler()
+
+        if (KMUserDefaultHandler.isLoggedIn())
+        {
+            // Get login screen from storyboard and present it
+            if let viewController = UIStoryboard(name: "Main", bundle: nil)
+                .instantiateViewController(withIdentifier: "NavVC") as? UINavigationController {
+                viewController.modalPresentationStyle = .fullScreen
+                self.window?.makeKeyAndVisible();
+                self.window?.rootViewController!.present(viewController, animated:true, completion: nil)
+            }
+        }
         // Override point for customization after application launch.
         return true
     }
