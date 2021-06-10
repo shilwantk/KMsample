@@ -20,6 +20,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         
+        registerForNotification()
+        
         KMPushNotificationHandler.shared.dataConnectionNotificationHandlerWith(Kommunicate.defaultConfiguration, Kommunicate.kmConversationViewConfiguration)
         let kmApplocalNotificationHandler : KMAppLocalNotification =  KMAppLocalNotification.appLocalNotificationHandler()
         kmApplocalNotificationHandler.dataConnectionNotificationHandler()
@@ -50,6 +52,58 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         // Called when the user discards a scene session.
         // If any sessions were discarded while the application was not running, this will be called shortly after application:didFinishLaunchingWithOptions.
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
+    }
+    
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data)
+    {
+
+        print("DEVICE_TOKEN_DATA :: \(deviceToken.description)")  // (SWIFT = 3) : TOKEN PARSING
+
+        var deviceTokenString: String = ""
+        for i in 0..<deviceToken.count
+        {
+            deviceTokenString += String(format: "%02.2hhx", deviceToken[i] as CVarArg)
+        }
+        print("DEVICE_TOKEN_STRING :: \(deviceTokenString)")
+
+        if (KMUserDefaultHandler.getApnDeviceToken() != deviceTokenString)
+        {
+            let kmRegisterUserClientService: KMRegisterUserClientService = KMRegisterUserClientService()
+            kmRegisterUserClientService.updateApnDeviceToken(withCompletion: deviceTokenString, withCompletion: { (response, error) in
+                print ("REGISTRATION_RESPONSE :: \(String(describing: response))")
+            })
+        }
+    }
+    
+    func registerForNotification() {
+        UNUserNotificationCenter.current().requestAuthorization(options:[.badge, .alert, .sound]) { (granted, error) in
+
+            if granted {
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            }
+        }
+    }
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        let service = KMPushNotificationService()
+        let dict = notification.request.content.userInfo
+        guard !service.isKommunicateNotification(dict) else {
+            service.processPushNotification(dict, appState: UIApplication.shared.applicationState)
+            completionHandler([])
+            return
+        }
+        completionHandler([.sound, .badge, .alert])
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let service = KMPushNotificationService()
+        let dict = response.notification.request.content.userInfo
+        if service.isApplozicNotification(dict) {
+            service.processPushNotification(dict, appState: UIApplication.shared.applicationState)
+        }
+        completionHandler()
     }
 
 
